@@ -8,12 +8,9 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.example.lab_week_10.viewmodels.TotalViewModel
+import com.example.lab_week_10.database.TotalObject
 
 class FirstFragment : Fragment() {
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -27,15 +24,13 @@ class FirstFragment : Fragment() {
         prepareViewModel()
     }
 
-    private fun updateText(total: Int) {
+    private fun updateText(total: TotalObject) {
         view?.findViewById<TextView>(R.id.text_total)?.text =
-            getString(R.string.text_total, total)
+            getString(R.string.text_total, total.value)
     }
 
     private fun prepareViewModel() {
-        val viewModel =
-            ViewModelProvider(requireActivity()).get(TotalViewModel::class.java)
-
+        val viewModel = ViewModelProvider(requireActivity()).get(TotalViewModel::class.java)
         viewModel.total.observe(viewLifecycleOwner) { total ->
             updateText(total)
         }

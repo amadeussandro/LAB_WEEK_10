@@ -3,6 +3,7 @@ package com.example.lab_week_10
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -11,14 +12,14 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.room.Room
 import com.example.lab_week_10.database.Total
 import com.example.lab_week_10.database.TotalDatabase
+import com.example.lab_week_10.database.TotalObject
 import com.example.lab_week_10.viewmodels.TotalViewModel
+import java.util.Date
 
 class MainActivity : AppCompatActivity() {
 
-    // Create database instance using lazy
     private val db by lazy { prepareDatabase() }
 
-    // Create ViewModel instance using lazy
     private val viewModel by lazy {
         ViewModelProvider(this)[TotalViewModel::class.java]
     }
@@ -34,16 +35,47 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-        // Load from database
         initializeValueFromDatabase()
-
-        // Setup LiveData observer
         prepareViewModel()
     }
 
-    private fun updateText(total: Int) {
+    override fun onStart() {
+        super.onStart()
+        // show last updated date if available
+        val curr = viewModel.total.value
+        if (curr != null && curr.date.isNotEmpty()) {
+            Toast.makeText(this, "Last updated: ${curr.date}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun prepareDatabase(): TotalDatabase {
+        return Room.databaseBuilder(
+            applicationContext,
+            TotalDatabase::class.java,
+            "total-database"
+        )
+            .allowMainThreadQueries() // kept for simplicity per lab instructions
+            .fallbackToDestructiveMigration() // handle schema change for the exercise
+            .build()
+    }
+
+    private fun initializeValueFromDatabase() {
+        val list = db.totalDao().getTotal(ID)
+        if (list.isEmpty()) {
+            val initial = Total(
+                id = ID,
+                total = TotalObject(value = 0, date = "")
+            )
+            db.totalDao().insert(initial)
+            viewModel.setTotal(initial.total)
+        } else {
+            viewModel.setTotal(list.first().total)
+        }
+    }
+
+    private fun updateText(total: TotalObject) {
         findViewById<TextView>(R.id.text_total).text =
-            getString(R.string.text_total, total)
+            getString(R.string.text_total, total.value)
     }
 
     private fun prepareViewModel() {
@@ -56,30 +88,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Build Room database
-    private fun prepareDatabase(): TotalDatabase {
-        return Room.databaseBuilder(
-            applicationContext,
-            TotalDatabase::class.java,
-            "total-database"
-        ).allowMainThreadQueries() // only for simplicity
-            .build()
-    }
-
-    // Read saved total from DB on app launch
-    private fun initializeValueFromDatabase() {
-        val items = db.totalDao().getTotal(ID)
-        if (items.isEmpty()) {
-            db.totalDao().insert(Total(id = 1, total = 0))
-        } else {
-            viewModel.setTotal(items.first().total)
-        }
-    }
-
-    // Update DB when app is paused
     override fun onPause() {
         super.onPause()
-        db.totalDao().update(Total(ID, viewModel.total.value!!))
+        val curr = viewModel.total.value ?: TotalObject(0, "")
+        val updated = TotalObject(value = curr.value, date = Date().toString())
+        // save to DB (replace row with same ID)
+        db.totalDao().update(Total(ID, updated))
+        // update ViewModel so UI/Fragment will show latest date next onStart
+        viewModel.setTotal(updated)
     }
 
     companion object {
