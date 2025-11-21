@@ -11,7 +11,7 @@ class TotalViewModel : ViewModel() {
     val total: LiveData<TotalObject> = _total
 
     init {
-        // default initial value
+        // defaulst initial value
         _total.postValue(TotalObject(value = 0, date = ""))
     }
 
